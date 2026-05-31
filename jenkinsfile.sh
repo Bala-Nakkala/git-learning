@@ -9,37 +9,48 @@
 #
 
 
+
 pipeline {
-   agentany
-   stages{
-       stage('checkout)'{
-       step{
-           git 'https://github.com/balu9963/jenkinsfile'
-          }
-       }
+  agent any
 
+  environment {
+    IMAGE_NAME = "Bala-Nakkala/demo-java-app"
+  }
 
-	 stage('Build'){
-	 step{
-	 sh 'mvn clean,compile,test,install'
-         }
+  stages {
+
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: 'https://github.com/Bala-Nakkala/devops-demo-project.git'
       }
+    }
 
-	  stage('scan'){
-	  step{
-	       'sonarQube-scan'
-        
-       }
+    stage('Build') {
+      steps {
+        sh 'cd demo-java-app && mvn clean package -DskipTests'
       }
+    }
 
-          stage('Docker-Build'){
-	  step{
-	  sh 'docker build -t my-app .'
+    stage('Docker Build') {
+      steps {
+        sh 'cd demo-java-app && docker build -t $IMAGE_NAME:latest .'
+      }
+    }
 
-	  echo "deploy application"
-	}
-     }
-   }
- }
+    stage('Docker Push') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'USER',
+          passwordVariable: 'PASS'
+        )]) {
+          sh '''
+          echo $PASS | docker login -u $USER --password-stdin
+          docker push $IMAGE_NAME:latest
+          '''
+        }
+      }
+    }
+
+  }
 }
-
